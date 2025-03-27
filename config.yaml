@@ -1,0 +1,27 @@
+# config.yaml
+visualization:
+  figure_size: [12, 12]
+  cmap_colors: ['white', 'black', 'green', 'red', 'blue']
+  title: "Micromouse Simulation"
+  
+astar:
+  debug: False
+  visualize_every: 50
+  heuristic_weight: 1.0  # Can be used to weight the heuristic function
+
+pure_pursuit:
+  lookahead_distance: 0.2
+  debug: False
+  visualize_every: 5
+  max_speed: 0.5
+  min_speed: 0.2
+  steering_gain: 1.0
+  slow_steering_threshold: 0.785  # ~45 degrees in radians
+
+micromouse:
+  debug: False
+  visualize_every: 50
+  initial_heading: 0.785  # ~45 degrees in radians
+  dt: 0.1  # Time step for simulation
+  goal_threshold: 0.5  # Distance to consider goal reached
+  min_speed_threshold: 0.01  # Speed below which we consider stopped
