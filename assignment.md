@@ -12,14 +12,14 @@ You will start with the provided codebase that includes:
 ## Assignment Requirements
 
 ### 1. Implement RRT Path Planning (25 points)
-- **Add RRT implementation** in a new `rrt.py` file
-- **Modify main.py** to support both A* and RRT planning
+- **Add RRT implementation** in `pathPlanning.py`
+- **Modify micromouse.py** to support both A* and RRT planning
 - **Compare results** between A* and RRT in your report
 - **Visualization** must show both planning methods
 
 ### 2. Implement LQR Path Tracking (25 points)
-- **Add LQR controller** in a new `lqr.py` file
-- **Modify pursuit.py** to support both Pure Pursuit and LQR
+- **Add LQR controller** in `pathTracking.py` file
+- **Modify micromouse.py** to support both Pure Pursuit and LQR
 - **Compare performance** between tracking methods
 - **Demonstrate stability** with different speed profiles
 
@@ -36,18 +36,12 @@ You will start with the provided codebase that includes:
 - **Conclusion**: Recommend best planning/tracking combinations
 
 ## Implementation Guide
+## configuation yaml file
+In the baseline implementation provided, the configuration parameters are provided in the `config.yaml` file. 
+- Explore the effects of changing these parameters on the micromouse navigation performance
+- It is recommended to use the config.yaml file to store the parameters associated with the RRT, LQR and path optimization parameters
 
-### RRT Implementation Tips
-1. Use the existing `Map` class for collision checking
-2. Parameters to include:
-   ```python
-   class RRT:
-       def __init__(self, map, max_iter=1000, step_size=0.5, goal_bias=0.1):
-           # Your implementation
-   ```
-3. Visualize the tree growth during planning (optional bonus)
-
-### LQR Implementation Tips
+### LQR Implementation Guidelines
 Assume the micromouse is a 2-wheeled differential drive mouse robot, as per example shown below:
 ![Micromouse Maze Visualization](images//Micromouse_Green_Giant_V1.3.jpg) 
 *2-wheeled mouse*
@@ -71,6 +65,10 @@ Base your linearized model on this design
        # Your safety and smoothing implementation
    ```
 2. An implementation of Bezier curves has been outlined in the `bezier.md` file in this project. Integrate this implementation and explore the parameters to optimize the path.
+
+### Useful resources
+- Refer to class notes for overview of path planning and path tracking. 
+- https://github.com/AtsushiSakai/PythonRobotics/tree/master contains reference implementations of path planning and path tracking
 
 ## Deliverables
 1. **Code Submission**:
