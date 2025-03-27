@@ -8,6 +8,9 @@ A Python simulation of a micromouse robot navigating through a maze using:
 - **Pure Pursuit controller** for smooth path following
 - **Collision detection** with wall avoidance
 
+## Assignment details:
+A full description of the assignment is provided here: [assignment instructions](./assignment.md). Follow the instructions to add additional path planning and path tracking methods, and path optimization.
+
 ## Table of Contents
 - [Features](#features)
 - [Installation](#installation)
