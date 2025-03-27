@@ -49,7 +49,8 @@ You will start with the provided codebase that includes:
 
 ### LQR Implementation Tips
 Assume the micromouse is a 2-wheeled differential drive mouse robot, as per example shown below:
-![Micromouse Maze Visualization](images//Micromouse_Green_Giant_V1.3.jpg) *2-wheeled mouse*
+![Micromouse Maze Visualization](images//Micromouse_Green_Giant_V1.3.jpg) 
+*2-wheeled mouse*
 
 Base your linearized model on this design
 
