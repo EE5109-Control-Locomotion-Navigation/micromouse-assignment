@@ -1,27 +1,144 @@
-# config.yaml
+# config.yaml - WITH AUTO-SCALING
+# =============================================================================
+# This config uses AUTO-SCALING to maintain constant physical speeds
+# regardless of upsampling factor!
+# =============================================================================
+
+# Maze file: .csv or .txt (format: 1=wall, 0=free, 2=start, 4=end)
+maze_file: "mazefiles/classic/alljapan-045-2024-exp-fin.txt"
+
+# =============================================================================
+# PHYSICAL DIMENSIONS - For m/s speed conversion
+# =============================================================================
+physical_dimensions:
+  # Standard AAMC maze: 16x16 cells, each cell is 18cm (0.18m)
+  # Total maze size: 16 * 0.18 = 2.88m x 2.88m
+  maze_width_meters: 2.88       # Physical width of the maze in meters
+  maze_height_meters: 2.88      # Physical height of the maze in meters
+  use_metric_speeds: true       # If true, speeds in config are in m/s and converted to grid units
+
+simulation:
+  window_size: 900
+  fps: 60
+
 visualization:
   figure_size: [12, 12]
   cmap_colors: ['white', 'black', 'green', 'red', 'blue']
-  title: "Micromouse Simulation"
+  title: "Micromouse Simulation - Auto-Scaled Speeds"
   
+wall_cost:
+  enabled: true
+  weight: 4.0
+  decay: "exponential"
+  decay_rate: 0.5
+  threshold: 5.0
+
 astar:
-  debug: False
+  debug: true            # Set true to see A* visualization
   visualize_every: 50
-  heuristic_weight: 1.0  # Can be used to weight the heuristic function
+  heuristic_weight: 1.0
+
+  # Turn cost - NEW!
+  turn_cost_enabled: true
+  turn_cost_weight: 10.0        # Weight for turn penalty
+                               # Higher = smoother paths (but longer)
+  turn_cost_threshold: 45      # Degrees - no penalty below this
+                               # Lower = penalize even gentle curves
+
+# =============================================================================
+# MAZE UPSAMPLING WITH AUTO-SCALING
+# =============================================================================
+maze_upsampling:
+  enabled: false
+  factor: 1                     # 4x resolution for fine path planning
+  auto_scale_speeds: true       # ENABLE AUTO-SCALING!
+
+# =============================================================================
+# SPEEDS IN BASE UNITS (will be auto-scaled by upsampling factor)
+# Define all speeds as if upsampling factor = 1×
+# The system will automatically multiply by the upsampling factor
+# =============================================================================
 
 pure_pursuit:
-  lookahead_distance: 0.2
-  debug: False
-  visualize_every: 5
-  max_speed: 0.5
-  min_speed: 0.2
+  # When physical_dimensions.use_metric_speeds = true, speeds are in m/s
+  # Otherwise speeds are in grid units/sec
+  lookahead_distance: 3.0       # in grid units
+  max_speed: 0.1               # max allowed speed = 4 m/s (when use_metric_speeds: true)
+  min_speed: 0.001               # m/s (when use_metric_speeds: true) 
   steering_gain: 1.0
-  slow_steering_threshold: 0.785  # ~45 degrees in radians
+  slow_steering_threshold: 1.0
+  debug: true                   # Enable to see path following
+  visualize_every: 5
 
 micromouse:
-  debug: False
-  visualize_every: 50
-  initial_heading: 0.785  # ~45 degrees in radians
-  dt: 0.1  # Time step for simulation
-  goal_threshold: 0.5  # Distance to consider goal reached
-  min_speed_threshold: 0.01  # Speed below which we consider stopped
+  initial_heading: 3.14257      # π = 180 degrees (facing up)
+  dt: 0.01667                   # timestep in seconds (1/60 for real-time at 60 FPS)
+  goal_threshold: 1.0           # in grid units
+  min_speed_threshold: 0.001    # m/s (when use_metric_speeds: true)
+  debug: true                   # Enable debug visualization
+  visualize_every: 5
+
+# =============================================================================
+# DIFFERENTIAL DRIVE WITH SPIN-OUT PHYSICS
+# =============================================================================
+diff_drive:
+  # Physical dimensions
+  wheel_radius: 0.033 # don't modify
+  wheelbase: 0.10 # don't modify
+  
+  # Motor constraints (base values, will be scaled)
+  max_wheel_speed: 50.0         #  limit: 200 rad/s 
+  max_acceleration: 20.0        # limit: 400 rad/s²
+  
+  # ==========================================================================
+  # SPIN-OUT PARAMETERS (percentages - not scaled) - FORGIVING SETTINGS
+  # ==========================================================================
+  base_slip_factor: 0.995       # Excellent base grip
+  velocity_slip_factor: 0.001    # Minimal velocity-induced slip
+  turn_rate_slip_factor: 0.001   # Minimal turn-induced slip
+  combined_slip_factor: 0.001    # Key parameter - much more forgiving
+  max_slip: 0.01                # Low maximum slip
+  
+  spinout_threshold: 0.97       # Much harder to trigger spinout
+  spinout_angular_boost: 1.0    # Mild angular boost
+  spinout_linear_reduction: 0.75 # Retain substantial linear velocity
+  recovery_threshold: 0.95      # Easy recovery
+  spinout_noise: 0.001           # Minimal chaotic behavior
+  
+  # ==========================================================================
+  # PHYSICS MODEL
+  # ==========================================================================
+  use_lateral_accel_model: true
+  robot_mass: 0.15
+  coefficient_friction: 0.95    # High traction surface
+  gravity: 9.81
+  lateral_accel_threshold: 0.95 # Very high threshold
+  velocity_noise: 0.005         # Minimal noise
+
+# =============================================================================
+# HOW METRIC SPEED CONVERSION WORKS
+# =============================================================================
+#
+# When physical_dimensions.use_metric_speeds = true:
+#
+# 1. Define speeds in m/s (much more intuitive!)
+#    - max_speed: 3.0 m/s
+#    - min_speed: 0.01 m/s
+#
+# 2. System automatically converts to grid units based on maze size:
+#    - Standard AAMC maze: 2.88m × 2.88m = 129 × 129 cells
+#    - Meters per cell: 2.88 / 129 = 0.022326 m/cell
+#    - Conversion: 3.0 m/s / 0.022326 = 134.38 grid units/s
+#
+# 3. Works seamlessly with upsampling:
+#    - Upsampling changes grid size → automatically adjusts meters_per_cell
+#    - Physical speed stays constant at 3.0 m/s regardless of resolution
+#
+# BENEFITS:
+#   ✓ Enter speeds in real-world units (m/s)
+#   ✓ No manual conversion needed
+#   ✓ Works with any maze size or upsampling factor
+#   ✓ Physically accurate simulation
+#
+# To disable: Set use_metric_speeds: false (speeds become grid units/s)
+# =============================================================================

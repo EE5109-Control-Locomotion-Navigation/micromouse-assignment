@@ -12,7 +12,7 @@ class RRT:
 
 class AStar:
     """
-    A* Pathfinding Algorithm implementation for finding optimal path through maze
+    A* Pathfinding Algorithm implementation with turn cost
     """
     def __init__(self, maps, config=None):
         self.map = maps
@@ -25,6 +25,21 @@ class AStar:
         self.visualize_every = self.config.get('visualize_every', 10)
         self.heuristic_weight = self.config.get('heuristic_weight', 1.0)
         self.counter = 0
+
+        # Wall proximity cost configuration
+        wc = config.get('wall_cost', {}) if config else {}
+        self.wall_cost_enabled   = wc.get('enabled', False)
+        self.wc_weight           = wc.get('weight', 2.0)
+        self.wc_decay            = wc.get('decay', 'exponential')
+        self.wc_decay_rate       = wc.get('decay_rate', 0.5)
+        self.wc_threshold        = wc.get('threshold', 5.0)
+        if self.wall_cost_enabled:
+            self.map.compute_wall_distance_map()
+        
+        # Turn cost configuration
+        self.turn_cost_enabled = self.config.get('turn_cost_enabled', False)
+        self.turn_cost_weight = self.config.get('turn_cost_weight', 2.0)
+        self.turn_cost_threshold = self.config.get('turn_cost_threshold', 45)  # degrees
         
         if self.debug:
             plt.ion()
@@ -38,20 +53,89 @@ class AStar:
         """Set up real-time visualization for debugging"""
         grid = self.map.get_grid_representation()
         self.background = self.ax.imshow(grid, cmap=self.cmap)
-        # Visualization elements for open set, closed set, and current path
-        self.open_set_plot = self.ax.plot([], [], 'yo', markersize=2, alpha=0.5, label='Open Set')[0]
-        self.closed_set_plot = self.ax.plot([], [], 'co', markersize=2, alpha=0.3, label='Closed Set')[0]
-        self.path_plot = self.ax.plot([], [], 'm-', linewidth=1, alpha=0.7, label='Current Path')[0]
-        self.ax.set_title("A* Path Planning (Start to Goal)")
+        
+        # Plot elements for visualization
+        self.open_set_plot = self.ax.plot([], [], 'go', markersize=3, alpha=0.5, label='Open Set')[0]
+        self.closed_set_plot = self.ax.plot([], [], 'ro', markersize=2, alpha=0.3, label='Closed Set')[0]
+        self.path_plot = self.ax.plot([], [], 'b-', linewidth=2, label='Current Best')[0]
+        
+        self.ax.set_title("A* Pathfinding")
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         self.ax.legend()
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    def heuristic(self, a, b):
-        """Manhattan distance heuristic with configurable weight"""
-        return self.heuristic_weight * (abs(a.x - b.x) + abs(a.y - b.y))
+    def heuristic(self, state, goal):
+        """Manhattan distance heuristic"""
+        return self.heuristic_weight * (abs(state.x - goal.x) + abs(state.y - goal.y))
+
+    def wall_proximity_cost(self, state):
+        """
+        Calculate cost penalty for being near walls.
+        Returns higher cost when closer to walls.
+        """
+        if not self.wall_cost_enabled:
+            return 0.0
+        
+        d = self.map.wall_distance[state.x, state.y]
+        if d >= self.wc_threshold:
+            return 0.0
+        
+        if self.wc_decay == 'exponential':
+            return self.wc_weight * math.exp(-self.wc_decay_rate * d)
+        elif self.wc_decay == 'inverse':
+            return self.wc_weight / (d + 0.1)
+        elif self.wc_decay == 'linear':
+            return self.wc_weight * (1.0 - d / self.wc_threshold)
+        return 0.0
+    
+    def calculate_turn_cost(self, from_state, current_state, next_state):
+        """
+        Calculate turn cost based on direction change.
+        
+        Args:
+            from_state: Previous state (parent of current) - can be None
+            current_state: Current state
+            next_state: Proposed next state
+            
+        Returns:
+            Turn cost (0 if no turn or below threshold)
+        """
+        if not self.turn_cost_enabled or from_state is None:
+            return 0.0
+        
+        # Calculate direction vectors
+        v1_x = current_state.x - from_state.x
+        v1_y = current_state.y - from_state.y
+        v2_x = next_state.x - current_state.x
+        v2_y = next_state.y - current_state.y
+        
+        # Handle zero vectors (shouldn't happen in valid paths)
+        if (v1_x == 0 and v1_y == 0) or (v2_x == 0 and v2_y == 0):
+            return 0.0
+        
+        # Calculate angle between vectors using dot product
+        # cos(θ) = (v1 · v2) / (|v1| * |v2|)
+        dot_product = v1_x * v2_x + v1_y * v2_y
+        mag1 = math.sqrt(v1_x**2 + v1_y**2)
+        mag2 = math.sqrt(v2_x**2 + v2_y**2)
+        
+        cos_angle = dot_product / (mag1 * mag2)
+        cos_angle = max(-1.0, min(1.0, cos_angle))  # Clamp to [-1, 1] for numerical stability
+        
+        angle_rad = math.acos(cos_angle)
+        angle_deg = math.degrees(angle_rad)
+        
+        # No penalty for small turns
+        if angle_deg < self.turn_cost_threshold:
+            return 0.0
+        
+        # Penalty increases with turn angle
+        # 90° turn = weight, 180° turn = weight * 2
+        turn_penalty = self.turn_cost_weight * (angle_deg / 90.0)
+        
+        return turn_penalty
 
     def update_debug_plot(self, current_state=None):
         """Update the real-time visualization"""
@@ -82,7 +166,7 @@ class AStar:
         self.counter += 1
 
     def plan_path(self, start, goal):
-        """Find optimal path from start to goal using A* algorithm"""
+        """Find optimal path from start to goal using A* algorithm with turn cost"""
         self.open_list.add(start)
         start.h = self.heuristic(start, goal)
         start.k = start.h
@@ -101,7 +185,13 @@ class AStar:
                 if neighbor in self.closed_list or neighbor.state == "#":
                     continue  # Skip walls and already evaluated states
 
-                tentative_g = current.h + current.cost(neighbor)
+                # Calculate all cost components
+                base_cost = current.cost(neighbor)  # Distance cost
+                wall_cost = self.wall_proximity_cost(neighbor)  # Wall proximity penalty
+                turn_cost = self.calculate_turn_cost(current.parent, current, neighbor)  # Turn penalty
+                
+                # Total cost from start to neighbor through current
+                tentative_g = current.h + base_cost + wall_cost + turn_cost
                 
                 if neighbor not in self.open_list:
                     self.open_list.add(neighbor)
@@ -116,28 +206,64 @@ class AStar:
         return [], []  # Return empty path if none found
 
     def reconstruct_path(self, current):
-        """Backtrack from goal to start to get the final path"""
+        """Reconstruct path from goal to start by following parent pointers"""
         path_x, path_y = [], []
         while current:
-            path_x.append(current.x)
-            path_y.append(current.y)
-            current.set_state("*")  # Mark path in the map
+            path_x.insert(0, current.x)
+            path_y.insert(0, current.y)
             current = current.parent
-        
-        path_x.reverse()
-        path_y.reverse()
-        
-        if self.debug:
-            plt.close(self.fig)
         return path_x, path_y
-    
+
     def calculate_path_distance(self, path_x, path_y):
-        """Calculate total length of the planned path"""
-        if not path_x or not path_y or len(path_x) != len(path_y):
+        """Calculate total Euclidean distance of the path"""
+        if not path_x or len(path_x) < 2:
             return 0
-        distance = 0
-        for i in range(1, len(path_x)):
-            dx = path_x[i] - path_x[i-1]
-            dy = path_y[i] - path_y[i-1]
-            distance += math.sqrt(dx**2 + dy**2)
-        return distance
+        total_distance = 0
+        for i in range(len(path_x) - 1):
+            dx = path_x[i+1] - path_x[i]
+            dy = path_y[i+1] - path_y[i]
+            total_distance += math.sqrt(dx**2 + dy**2)
+        return total_distance
+    
+    def calculate_path_turns(self, path_x, path_y):
+        """
+        Calculate total turn angle and number of turns in the path.
+        Useful for evaluating path smoothness.
+        
+        Returns:
+            (total_turn_angle, num_significant_turns)
+        """
+        if not path_x or len(path_x) < 3:
+            return 0.0, 0
+        
+        total_angle = 0.0
+        num_turns = 0
+        
+        for i in range(1, len(path_x) - 1):
+            # Vectors before and after this waypoint
+            v1_x = path_x[i] - path_x[i-1]
+            v1_y = path_y[i] - path_y[i-1]
+            v2_x = path_x[i+1] - path_x[i]
+            v2_y = path_y[i+1] - path_y[i]
+            
+            # Calculate angle
+            if (v1_x == 0 and v1_y == 0) or (v2_x == 0 and v2_y == 0):
+                continue
+            
+            dot_product = v1_x * v2_x + v1_y * v2_y
+            mag1 = math.sqrt(v1_x**2 + v1_y**2)
+            mag2 = math.sqrt(v2_x**2 + v2_y**2)
+            
+            cos_angle = dot_product / (mag1 * mag2)
+            cos_angle = max(-1.0, min(1.0, cos_angle))
+            
+            angle_rad = math.acos(cos_angle)
+            angle_deg = math.degrees(angle_rad)
+            
+            total_angle += angle_deg
+            
+            # Count turns above threshold
+            if angle_deg > self.turn_cost_threshold:
+                num_turns += 1
+        
+        return total_angle, num_turns

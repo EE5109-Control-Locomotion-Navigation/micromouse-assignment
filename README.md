@@ -24,7 +24,7 @@ A full description of the assignment is provided here: [assignment instructions]
 
 ## Features
 
-- **Maze Import**: Reads maze configurations from CSV files
+- **Maze Import**: Reads maze configurations from CSV or TXT files (1=wall, 0=free, 2=start, 4=end)
 - **Path Planning**: Uses A* algorithm to find optimal paths
 - **Path Following**: Pure Pursuit controller for smooth navigation
 - **Collision Detection**: Stops simulation if walls are hit
@@ -45,8 +45,9 @@ A full description of the assignment is provided here: [assignment instructions]
    ```
 
 3. Prepare your maze file:
-   - Create a `maze.csv` file in the root directory
-   - Format: `0` for empty, `1` for walls, `2` for start, `4` for goal
+   - Create a `maze.csv` or `maze.txt` file in the root directory
+   - Format: `1` for walls, `0` for free space, `2` for start, `4` for goal
+   - To convert TXT to CSV: `python micromouse.py convert input.txt output.csv`
 
 ## Dependencies
 
@@ -62,7 +63,8 @@ A full description of the assignment is provided here: [assignment instructions]
 
 ### Program Flow
 1. **Maze Loading**:
-   - Reads maze configuration from `maze.csv`
+   - Reads maze from `maze.csv` or `maze.txt` (configurable in config.yaml)
+   - TXT format: space or comma separated (1=wall, 0=free, 2=start, 4=end)
    - Identifies start and goal positions
 
 2. **Path Planning**:
@@ -92,6 +94,9 @@ A full description of the assignment is provided here: [assignment instructions]
 Edit `config.yaml` to tune parameters:
 
 ```yaml
+# Maze file: .csv or .txt
+maze_file: maze.csv
+
 visualization:
   figure_size: [12, 12]
   cmap_colors: ['white', 'black', 'green', 'red', 'blue']
@@ -117,12 +122,12 @@ micromouse:
 
 Run the simulation:
 ```bash
-python main.py
+python micromouse.py
 ```
 
-Command line options:
+Convert TXT maze to CSV:
 ```bash
-python main.py --config custom_config.yaml
+python micromouse.py convert my_maze.txt my_maze.csv
 ```
 
 ## File Structure
