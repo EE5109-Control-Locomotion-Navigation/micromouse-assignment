@@ -61,8 +61,13 @@ class State:
         self.parent = None  # Parent state in pathfinding
         self.state = "."  # Cell state: ".", "#", "s", "e", or "*"
         self.t = "new"  # State tag for algorithms
-        self.h = 0  # Heuristic cost
-        self.k = 0  # Total estimated cost
+        # For A* search:
+        # g = cost from start to this state
+        # h = heuristic estimate from this state to goal
+        # k = f = g + h (total estimated cost)
+        self.g = 0.0
+        self.h = 0.0
+        self.k = 0.0
 
     def cost(self, state):
         """Calculate movement cost to another state (infinity if wall)"""

@@ -38,14 +38,22 @@ visualization:
 # =============================================================================
 
 wall_cost:
-  enabled: true
-  weight: 4.0   # Higher weight = stronger avoidance of walls (but may lead to longer paths)
+  enabled: true # Set false to disable wall cost (not recommended for realistic paths)
+  weight: 8.0   # Higher weight = stronger avoidance of walls (but may lead to longer paths)
   decay: "exponential"  # "linear" or "exponential"
   decay_rate: 0.5  # For exponential decay, higher = faster decay of wall cost with distance
   threshold: 5.0  # Maximum distance (in grid units) at which wall cost is applied
 
 # =============================================================================
-# A* PATHFINDING PARAMETERS
+# A* PATHFINDING PARAMETERS - TRADITIONAL MICROMOUSE APPROACH
+# =============================================================================
+# Cost function: g(n) = distance + wall_avoidance + turn_count × turn_weight
+# 
+# This uses discrete cell-level planning matching real micromouse competitions:
+# - Operates on 16×16 maze grid (no upsampling needed)
+# - Turns are counted as discrete events at cell boundaries
+# - 90° turn = +turn_weight cost, 180° turn = +2×turn_weight cost
+# - Typical turn_weight: 0.5-2.0 cell distances
 # =============================================================================
 
 astar:
@@ -53,12 +61,13 @@ astar:
   visualize_every: 50
   heuristic_weight: 1.0
 
-  # Turn cost parameters for smoother paths
+  # Turn cost - Traditional Micromouse approach
+  # Counts discrete direction changes at cell boundaries
   turn_cost_enabled: false     # Set true to enable turn cost penalty
-  turn_cost_weight: 2.0        # Weight for turn penalty
-                               # Higher = smoother paths (but longer)
-  turn_cost_threshold: 45      # Degrees - no penalty below this
-                               # Lower = penalize even gentle curves
+  turn_cost_weight: 4.0      # Cost per 90-degree turn
+                              # Higher = stronger preference for straight paths
+                              # Typical values: 0.5-2.0 (in units of cell distance)
+  turn_cost_threshold: 0      # Not used in discrete turn counting
 
 # =============================================================================
 # THETA* PATH PLANNING PARAMETERS
@@ -85,12 +94,15 @@ rrt:
   debug: true                  # Enable debug output
 
 # =============================================================================
-# MAZE UPSAMPLING WITH AUTO-SCALING
+# MAZE UPSAMPLING (Optional - not needed for traditional micromouse)
+# =============================================================================
+# Traditional micromouse uses cell-level planning on 16×16 grid (upsampling disabled).
+# Upsampling can be enabled for research purposes or alternative algorithms.
 # =============================================================================
 maze_upsampling:
-  enabled: false
-  factor: 1                     # 4x resolution for fine path planning
-  auto_scale_speeds: true       # ENABLE AUTO-SCALING!
+  enabled: false               # Keep false for traditional micromouse approach
+  factor: 2                    # Upsampling factor if enabled
+  auto_scale_speeds: true      # Auto-scale speeds if upsampling enabled
 
 # =============================================================================
 # Pure Pursuit parameters - speeds are in m/s if use_metric_speeds is true, otherwise in grid units/sec
@@ -101,7 +113,7 @@ pure_pursuit:
   # When physical_dimensions.use_metric_speeds = true, speeds are in m/s
   # Otherwise speeds are in grid units/sec
   lookahead_distance: 3.0       # in grid units
-  max_speed: 0.1               # max allowed speed = 4 m/s 
+  max_speed: 0.1              # max allowed speed = 4 m/s 
   min_speed: 0.001               # m/s
   steering_gain: 1.0     # Gain for steering control (higher = more aggressive)
   slow_steering_threshold: 1.0     # Degrees - start slowing down steering below this angle
@@ -131,8 +143,8 @@ diff_drive:
   wheelbase: 0.06 # don't modify
   
   # Motor constraints (base values, will be scaled)
-  max_wheel_speed: 50.0         #  limit: 200 rad/s 
-  max_acceleration: 20.0        # limit: 400 rad/s²
+  max_wheel_speed: 100.0         #  limit: 200 rad/s 
+  max_acceleration: 300.0        # limit: 400 rad/s²
   
   # ==========================================================================
   # SPIN-OUT PARAMETERS - don't modify

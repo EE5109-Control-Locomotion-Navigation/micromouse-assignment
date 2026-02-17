@@ -125,7 +125,19 @@ class ThetaStar:
 
 class AStar:
     """
-    A* Pathfinding Algorithm implementation with turn cost
+    A* Pathfinding Algorithm - Traditional Micromouse Approach
+    
+    Cost function: g(n) = distance_cost + wall_cost + turn_cost
+    
+    - distance_cost: Euclidean distance between cells
+    - wall_cost: Penalty for proximity to walls (keeps robot safer)
+    - turn_cost: Discrete penalty per direction change
+        * 0 cost: continuing straight
+        * 1× weight: 90-degree turn (e.g., North to East)
+        * 2× weight: 180-degree turn (requires two 90° turns)
+    
+    This matches real micromouse competition algorithms where turns
+    are counted as discrete events at cell boundaries.
     """
     def __init__(self, maps, config=None):
         self.map = maps
@@ -148,6 +160,24 @@ class AStar:
         self.wc_threshold        = wc.get('threshold', 5.0)
         if self.wall_cost_enabled:
             self.map.compute_wall_distance_map()
+        
+        # Metric scaling for turn and distance calculations (optional)
+        # If physical maze dimensions are provided, use them to derive
+        # meters-per-cell in each axis so turn angles are computed in
+        # physical space rather than raw grid indices.
+        phys_dims = config.get('physical_dimensions', {}) if config else {}
+        maze_width_m  = phys_dims.get('maze_width_meters', None)
+        maze_height_m = phys_dims.get('maze_height_meters', None)
+        if maze_width_m is not None and maze_height_m is not None:
+            num_cols = max(self.map.col, 1)
+            num_rows = max(self.map.row, 1)
+            # Columns span the physical maze width (x-axis), rows the height (y-axis)
+            self.m_per_cell_x = maze_width_m / num_cols
+            self.m_per_cell_y = maze_height_m / num_rows
+        else:
+            # Fallback to isotropic grid units if no physical dimensions given
+            self.m_per_cell_x = 1.0
+            self.m_per_cell_y = 1.0
         
         # Turn cost configuration
         self.turn_cost_enabled = self.config.get('turn_cost_enabled', False)
@@ -205,7 +235,13 @@ class AStar:
     
     def calculate_turn_cost(self, from_state, current_state, next_state):
         """
-        Calculate turn cost based on direction change.
+        Calculate turn cost based on direction change at cell level.
+        Traditional micromouse approach: count discrete direction changes.
+        
+        A "turn" occurs when moving direction changes between cells:
+        - North to East = 1 turn
+        - North to South = 2 turns (180° requires two 90° turns)
+        - North to North = 0 turns (straight)
         
         Args:
             from_state: Previous state (parent of current) - can be None
@@ -213,42 +249,35 @@ class AStar:
             next_state: Proposed next state
             
         Returns:
-            Turn cost (0 if no turn or below threshold)
+            Turn cost based on number of 90-degree turns required
         """
         if not self.turn_cost_enabled or from_state is None:
             return 0.0
         
-        # Calculate direction vectors
-        v1_x = current_state.x - from_state.x
-        v1_y = current_state.y - from_state.y
-        v2_x = next_state.x - current_state.x
-        v2_y = next_state.y - current_state.y
+        # Calculate incoming direction (from -> current)
+        dx1 = current_state.x - from_state.x
+        dy1 = current_state.y - from_state.y
         
-        # Handle zero vectors (shouldn't happen in valid paths)
-        if (v1_x == 0 and v1_y == 0) or (v2_x == 0 and v2_y == 0):
+        # Calculate outgoing direction (current -> next)
+        dx2 = next_state.x - current_state.x
+        dy2 = next_state.y - current_state.y
+        
+        # Check if continuing in same direction (no turn)
+        if dx1 == dx2 and dy1 == dy2:
             return 0.0
         
-        # Calculate angle between vectors using dot product
-        # cos(θ) = (v1 · v2) / (|v1| * |v2|)
-        dot_product = v1_x * v2_x + v1_y * v2_y
-        mag1 = math.sqrt(v1_x**2 + v1_y**2)
-        mag2 = math.sqrt(v2_x**2 + v2_y**2)
+        # Check if reversing direction (180° turn = 2 turns)
+        if dx1 == -dx2 and dy1 == -dy2:
+            return self.turn_cost_weight * 2.0
         
-        cos_angle = dot_product / (mag1 * mag2)
-        cos_angle = max(-1.0, min(1.0, cos_angle))  # Clamp to [-1, 1] for numerical stability
+        # Otherwise it's a 90° turn (perpendicular)
+        # Verify it's actually perpendicular (dot product should be 0)
+        dot = dx1 * dx2 + dy1 * dy2
+        if abs(dot) < 0.01:  # Perpendicular (90-degree turn)
+            return self.turn_cost_weight
         
-        angle_rad = math.acos(cos_angle)
-        angle_deg = math.degrees(angle_rad)
-        
-        # No penalty for small turns
-        if angle_deg < self.turn_cost_threshold:
-            return 0.0
-        
-        # Penalty increases with turn angle
-        # 90° turn = weight, 180° turn = weight * 2
-        turn_penalty = self.turn_cost_weight * (angle_deg / 90.0)
-        
-        return turn_penalty
+        # Should never reach here with 4-directional movement
+        return 0.0
 
     def update_debug_plot(self, current_state=None):
         """Update the real-time visualization"""
@@ -280,9 +309,15 @@ class AStar:
 
     def plan_path(self, start, goal):
         """Find optimal path from start to goal using A* algorithm with turn cost"""
-        self.open_list.add(start)
+        # Initialize start node costs
+        self.open_list = set()
+        self.closed_list = set()
+
+        start.g = 0.0
         start.h = self.heuristic(start, goal)
-        start.k = start.h
+        start.k = start.g + start.h
+        start.parent = None
+        self.open_list.add(start)
 
         while self.open_list:
             current = min(self.open_list, key=lambda x: x.k)  # Get state with lowest cost
@@ -298,33 +333,62 @@ class AStar:
                 if neighbor in self.closed_list or neighbor.state == "#":
                     continue  # Skip walls and already evaluated states
 
-                # Calculate all cost components
-                base_cost = current.cost(neighbor)  # Distance cost
-                wall_cost = self.wall_proximity_cost(neighbor)  # Wall proximity penalty
-                turn_cost = self.calculate_turn_cost(current.parent, current, neighbor)  # Turn penalty
+                # Calculate cost components for traditional micromouse pathfinding:
+                base_cost = current.cost(neighbor)  # Distance (typically 1.0 for adjacent cells)
+                wall_cost = self.wall_proximity_cost(neighbor)  # Safety margin from walls
+                turn_cost = self.calculate_turn_cost(current.parent, current, neighbor)  # Discrete turn count
                 
-                # Total cost from start to neighbor through current
-                tentative_g = current.h + base_cost + wall_cost + turn_cost
+                # Total path cost: distance + safety + turn_penalty
+                # Example: straight move = 1.0, 90° turn = 1.0 + turn_weight
+                tentative_g = current.g + base_cost + wall_cost + turn_cost
                 
                 if neighbor not in self.open_list:
                     self.open_list.add(neighbor)
-                elif tentative_g >= neighbor.h:
-                    continue  # Not a better path
+                elif tentative_g >= neighbor.g:
+                    # Existing path to neighbor is better or equal
+                    continue
 
                 # Update neighbor with better path
                 neighbor.parent = current
-                neighbor.h = tentative_g
-                neighbor.k = neighbor.h + self.heuristic(neighbor, goal)
+                neighbor.g = tentative_g
+                neighbor.h = self.heuristic(neighbor, goal)
+                neighbor.k = neighbor.g + neighbor.h
 
         return [], []  # Return empty path if none found
 
     def reconstruct_path(self, current):
         """Reconstruct path from goal to start by following parent pointers"""
         path_x, path_y = [], []
+        total_turns = 0
+        
+        # Collect path
         while current:
             path_x.insert(0, current.x)
             path_y.insert(0, current.y)
             current = current.parent
+        
+        # Count turns in the final path
+        if self.turn_cost_enabled and len(path_x) >= 3:
+            for i in range(1, len(path_x) - 1):
+                dx1 = path_x[i] - path_x[i-1]
+                dy1 = path_y[i] - path_y[i-1]
+                dx2 = path_x[i+1] - path_x[i]
+                dy2 = path_y[i+1] - path_y[i]
+                
+                # Count direction changes
+                if not (dx1 == dx2 and dy1 == dy2):
+                    if dx1 == -dx2 and dy1 == -dy2:
+                        total_turns += 2  # 180-degree turn
+                    else:
+                        total_turns += 1  # 90-degree turn
+            
+            print(f"\n=== Path Planning Complete ===")
+            print(f"Path length: {len(path_x)} cells")
+            print(f"Total turns: {total_turns}")
+            print(f"Turn cost weight: {self.turn_cost_weight}")
+            print(f"Turn cost contribution: {total_turns * self.turn_cost_weight}")
+            print(f"==============================\n")
+        
         return path_x, path_y
 
     def calculate_path_distance(self, path_x, path_y):
@@ -354,10 +418,12 @@ class AStar:
         
         for i in range(1, len(path_x) - 1):
             # Vectors before and after this waypoint
-            v1_x = path_x[i] - path_x[i-1]
-            v1_y = path_y[i] - path_y[i-1]
-            v2_x = path_x[i+1] - path_x[i]
-            v2_y = path_y[i+1] - path_y[i]
+            # path_x stores row indices (y-axis in meters), path_y stores
+            # column indices (x-axis in meters). Convert to metric space.
+            v1_x = (path_y[i]   - path_y[i-1]) * self.m_per_cell_x
+            v1_y = (path_x[i]   - path_x[i-1]) * self.m_per_cell_y
+            v2_x = (path_y[i+1] - path_y[i])   * self.m_per_cell_x
+            v2_y = (path_x[i+1] - path_x[i])   * self.m_per_cell_y
             
             # Calculate angle
             if (v1_x == 0 and v1_y == 0) or (v2_x == 0 and v2_y == 0):
