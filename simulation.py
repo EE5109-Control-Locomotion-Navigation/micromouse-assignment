@@ -14,7 +14,8 @@ Controls:
     Q / ESC - Quit
 
 Usage:
-    python simulation.py [config.yaml]
+    python simulation.py [config.yaml]              # Interactive mode
+    python simulation.py --benchmark [config.yaml]  # Headless benchmark mode
 """
 
 import sys
@@ -414,7 +415,18 @@ class PygameSimulation:
             self.collision = True
             self.status = "COLLISION  (out of bounds)"
             return
-        if self.maze.map[int(r)][int(c)].state == "#":
+        
+        # Check collision using robot's actual physical dimensions
+        # Robot body dimensions in grid units
+        wheelbase_meters = self.robot.wheelbase  # 0.10m
+        body_width_grid = wheelbase_meters / self.meters_per_cell
+        body_length_grid = body_width_grid * 1.1  # Slightly longer than wide
+        
+        # Use circular collision approximation (conservative)
+        collision_radius = max(body_width_grid, body_length_grid) / 2.0
+        
+        # Check points around the robot's perimeter
+        if self._check_collision_at_radius(r, c, collision_radius):
             self.collision = True
             self.status = f"COLLISION  ({r:.1f}, {c:.1f})"
             return
@@ -425,6 +437,21 @@ class PygameSimulation:
         if math.hypot(r - gr, c - gc) < goal_thr:
             self.goal_reached = True
             self.status = "GOAL REACHED!  Press SPACE/R"
+            
+            # Print competition metrics
+            print("\n" + "="*60)
+            print("🏁 COMPETITION RESULTS")
+            print("="*60)
+            print(f"  Completion Time:    {self.sim_time:.3f} seconds ⭐ COMPETITION SCORE")
+            print(f"  Path Length:        {self.traversed:.3f} units (reference)")
+            print(f"  Planned Distance:   {self.planned_distance:.3f} units")
+            print(f"  Path Efficiency:    {(self.planned_distance / max(self.traversed, 0.01) * 100):.1f}%")
+            print(f"  Collisions:         {1 if self.collision else 0}")
+            print(f"  Status:             {'✅ QUALIFIED' if not self.collision else '❌ DISQUALIFIED'}")
+            print("="*60)
+            print("⚡ Lower time is better - be the fastest!")
+            print("="*60 + "\n")
+            
             return
 
         # ── stall check ──
@@ -443,6 +470,152 @@ class PygameSimulation:
     def _m2s(self, pos):
         """Maze (row, col) -> screen (px_x, px_y)."""
         return (pos[1] * self.cell_size, pos[0] * self.cell_size)
+
+    def _check_collision_at_radius(self, r, c, radius):
+        """Check if robot with given radius collides with any walls.
+        
+        Args:
+            r, c: robot center position in grid coordinates
+            radius: collision radius in grid units
+            
+        Returns:
+            True if collision detected, False otherwise
+        """
+        # Check center point
+        if self._is_wall(r, c):
+            return True
+        
+        # Check points around the perimeter (8 directions + some intermediate)
+        num_check_points = 16
+        for i in range(num_check_points):
+            angle = 2 * math.pi * i / num_check_points
+            check_r = r + radius * math.cos(angle)
+            check_c = c + radius * math.sin(angle)
+            
+            if self._is_wall(check_r, check_c):
+                return True
+        
+        # Also check the four corners at full diagonal
+        diag_radius = radius * 0.707  # sqrt(2)/2
+        for dr, dc in [(diag_radius, diag_radius), (diag_radius, -diag_radius),
+                       (-diag_radius, diag_radius), (-diag_radius, -diag_radius)]:
+            if self._is_wall(r + dr, c + dc):
+                return True
+        
+        return False
+    
+    def _is_wall(self, r, c):
+        """Check if a position is out of bounds or inside a wall.
+        
+        Args:
+            r, c: position in grid coordinates
+            
+        Returns:
+            True if position is wall or out of bounds, False otherwise
+        """
+        # Out of bounds check
+        if not (0 <= r < self.maze.row and 0 <= c < self.maze.col):
+            return True
+        
+        # Wall check
+        ir, ic = int(r), int(c)
+        if 0 <= ir < self.maze.row and 0 <= ic < self.maze.col:
+            return self.maze.map[ir][ic].state == "#"
+        
+        return True
+
+    # ------------------------------------------------------------------ #
+    #  Robot rendering helpers                                            #
+    # ------------------------------------------------------------------ #
+
+    def _draw_rounded_robot(self, cx, cy, length, width, heading, color, is_spinning,
+                           wheel_length, wheel_width):
+        """Draw complete robot (body + wheels) as one rigid unit.
+        
+        Args:
+            cx, cy: center position in screen coordinates
+            length: body length in pixels (front-to-back)
+            width: body width in pixels (side-to-side, ~ wheelbase)
+            heading: robot heading angle in radians (0 = right, π/2 = up)
+            color: body color
+            is_spinning: whether robot is spinning out
+            wheel_length: wheel length in pixels
+            wheel_width: wheel thickness in pixels
+        """
+        # Create a surface large enough for body + wheels
+        max_dim = int(max(length, width) * 2)
+        robot_surf = pygame.Surface((max_dim, max_dim), pygame.SRCALPHA)
+        center = max_dim // 2
+        
+        # ---- Draw wheels FIRST (so they appear behind body) ----
+        wheel_offset = width / 2  # Wheels at edge of body
+        
+        # Left wheel (when facing forward)
+        left_wheel_x = int(center)
+        left_wheel_y = int(center - wheel_offset)
+        self._draw_wheel_on_surface(robot_surf, left_wheel_x, left_wheel_y, 
+                                    wheel_length, wheel_width)
+        
+        # Right wheel
+        right_wheel_x = int(center)
+        right_wheel_y = int(center + wheel_offset)
+        self._draw_wheel_on_surface(robot_surf, right_wheel_x, right_wheel_y,
+                                     wheel_length, wheel_width)
+        
+        # ---- Draw robot body ----
+        rect_x = center - length // 2
+        rect_y = center - width // 2
+        corner_radius = int(width * 0.25)
+        
+        # Main body
+        body_rect = pygame.Rect(rect_x, rect_y, length, width)
+        pygame.draw.rect(robot_surf, color, body_rect, border_radius=corner_radius)
+        
+        # Body outline
+        outline_color = C_WHITE if not is_spinning else (255, 255, 100)
+        pygame.draw.rect(robot_surf, outline_color, body_rect, 2, border_radius=corner_radius)
+        
+        # Front sensors (3 small circles at the front)
+        sensor_y = center
+        sensor_x_start = center + length // 2 - length * 0.15
+        sensor_r = max(2, int(width * 0.08))
+        sensor_spacing = width * 0.3
+        
+        for i in [-1, 0, 1]:
+            sy = int(sensor_y + i * sensor_spacing)
+            sx = int(sensor_x_start)
+            pygame.draw.circle(robot_surf, (100, 150, 255), (sx, sy), sensor_r)
+        
+        # ---- Rotate the entire surface (body + wheels together) ----
+        # pygame rotation is counter-clockwise from 0 = right
+        # our heading is: 0 = down, π/2 = right, π = up, 3π/2 = left
+        # The sprite naturally points right (front at +x), so:
+        # pygame_angle = heading_degrees - 90
+        heading_deg = math.degrees(heading)
+        pygame_angle = heading_deg - 90
+        rotated = pygame.transform.rotate(robot_surf, pygame_angle)
+        
+        # Blit centered
+        rotated_rect = rotated.get_rect(center=(int(cx), int(cy)))
+        self.screen.blit(rotated, rotated_rect)
+
+    def _draw_wheel_on_surface(self, surface, x, y, length, width):
+        """Draw a single wheel directly on a surface (before rotation).
+        
+        Args:
+            surface: pygame Surface to draw on
+            x, y: wheel center position on the surface
+            length: wheel length in pixels
+            width: wheel thickness in pixels
+        """
+        # Rotate wheel 90 degrees: swap length/width dimensions
+        rect_x = int(x - width // 2)
+        rect_y = int(y - length // 2)
+        wheel_rect = pygame.Rect(rect_x, rect_y, int(width), int(length))
+        
+        # Black wheel with gray outline
+        pygame.draw.rect(surface, (40, 40, 40), wheel_rect, border_radius=int(width * 0.3))
+        pygame.draw.rect(surface, (120, 120, 120), wheel_rect, 1, border_radius=int(width * 0.3))
 
     # ------------------------------------------------------------------ #
     #  Drawing                                                            #
@@ -491,9 +664,20 @@ class PygameSimulation:
                 max(3, int(self.cell_size * 0.7)), 2,
             )
 
-        # 6. robot
+        # 6. robot (realistic rendering based on physical dimensions)
         rx, ry = self._m2s(self.pos)
-        rr = max(4, int(self.cell_size * 1.5))
+        
+        # Calculate robot dimensions based on physical specs from config
+        # Wheelbase is 0.10m, typical micromouse body is slightly larger
+        wheelbase_meters = self.robot.wheelbase  # 0.10m
+        wheel_radius_meters = self.robot.wheel_radius  # 0.033m
+        
+        # Convert physical dimensions to screen pixels
+        # Body width ~= wheelbase, body length slightly larger for aesthetics
+        body_width_px = (wheelbase_meters / self.meters_per_cell) * self.cell_size
+        body_length_px = body_width_px * 1.1  # Slightly longer than wide
+        wheel_width_px = (wheel_radius_meters * 2 / self.meters_per_cell) * self.cell_size
+        wheel_length_px = wheel_width_px * 0.4  # Wheels are thinner
         
         # Get diagnostics for visual feedback
         diag = self.robot.get_diagnostics()
@@ -501,11 +685,11 @@ class PygameSimulation:
         
         # Spinout glow effect
         if is_spinning:
-            glow_r = int(rr * 2.5)
+            glow_r = int(body_width_px * 1.5)
             glow_surf = pygame.Surface((glow_r * 2, glow_r * 2), pygame.SRCALPHA)
             for i in range(3):
                 alpha = 80 - i * 25
-                radius = glow_r - i * int(rr * 0.4)
+                radius = glow_r - i * int(body_width_px * 0.3)
                 pygame.draw.circle(glow_surf, (*C_SPIN_GLOW, alpha), (glow_r, glow_r), radius)
             self.screen.blit(glow_surf, (int(rx - glow_r), int(ry - glow_r)))
         
@@ -516,11 +700,14 @@ class PygameSimulation:
             else C_ROBOT_SPIN if is_spinning
             else C_ROBOT
         )
-        pygame.draw.circle(self.screen, body_c, (int(rx), int(ry)), rr)
-        pygame.draw.circle(self.screen, C_WHITE, (int(rx), int(ry)), rr, 1)
-
-        # heading line
-        hl = rr * 2.2
+        
+        # Draw robot body + wheels as one rigid unit
+        self._draw_rounded_robot(rx, ry, body_length_px, body_width_px, 
+                                  self.heading, body_c, is_spinning,
+                                  wheel_length_px, wheel_width_px)
+        
+        # heading indicator (front sensor array)
+        hl = body_length_px * 0.7
         hx = rx + hl * math.sin(self.heading)
         hy = ry + hl * math.cos(self.heading)
         pygame.draw.line(
@@ -741,12 +928,228 @@ class PygameSimulation:
         pygame.quit()
 
 
+# ── Benchmark Mode (Headless) ────────────────────────────────────────────── #
+
+class BenchmarkSimulation:
+    """Headless simulation for fast benchmarking without visualization."""
+    
+    def __init__(self, config_file="config.yaml"):
+        # ── config ──
+        with open(config_file) as f:
+            self.config = yaml.safe_load(f)
+        
+        # ── maze ──
+        maze_file = self.config.get("maze_file", "maze.csv")
+        self.maze_array = load_maze(maze_file)
+        
+        # Apply upsampling if enabled
+        if self.config.get('maze_upsampling', {}).get('enabled', False):
+            factor = self.config.get('maze_upsampling', {}).get('factor', 1)
+            self.maze_array = upsample_maze(self.maze_array, factor)
+        
+        self.maze = Map(self.maze_array)
+        
+        # ── Convert metric speeds ──
+        self._convert_metric_speeds()
+        
+        # ── timestep ──
+        mc = self.config.get("micromouse", {})
+        self.dt = mc.get("dt", 0.05)
+        self.max_steps = mc.get("max_steps", 10000)  # Safety limit
+        
+        # ── path planning ──
+        print("\n" + "="*60)
+        print("🏁 BENCHMARK MODE - Planning...")
+        print("="*60)
+        
+        start = self.maze.map[self.maze.start[0]][self.maze.start[1]]
+        goal = self.maze.map[self.maze.goal[0]][self.maze.goal[1]]
+        
+        planner = AStar(self.maze, self.config)
+        px, py = planner.plan_path(start, goal)
+        self.path = list(zip(px, py)) if px and py else []
+        
+        if not self.path:
+            print("❌ ERROR: No path found!")
+            return
+        
+        print(f"✅ Path found: {len(self.path)} waypoints")
+        
+        # Calculate planned distance
+        self.planned_distance = planner.calculate_path_distance(px, py)
+        
+        # ── robot & controller ──
+        self.robot = DifferentialDriveRobot(self.config)
+        self.controller = DiffDriveController(self.robot.wheel_radius, self.robot.wheelbase)
+        
+        # ── Pure Pursuit controller (no debug visualization) ──
+        cfg = {**self.config}
+        cfg["pure_pursuit"] = {**cfg.get("pure_pursuit", {}), "debug": False}
+        self.pp = PurePursuit(self.maze, cfg)
+        self.pp.set_path(self.path)
+        
+        # ── Initialize state ──
+        sp = self.maze.start
+        self.pos = list(sp)
+        self.heading = mc.get("initial_heading", math.pi / 4)
+        self.speed = 0.0
+        self.steering = 0.0
+        self.traversed = 0.0
+        self.sim_time = 0.0
+        self.collision = False
+        self.goal_reached = False
+        self.robot.stop()
+        
+    def _convert_metric_speeds(self):
+        """Convert speeds from m/s to grid units/s if use_metric_speeds is enabled."""
+        phys_dims = self.config.get('physical_dimensions', {})
+        use_metric_speeds = phys_dims.get('use_metric_speeds', False)
+        
+        self.meters_per_cell = 1.0
+        
+        if not use_metric_speeds:
+            return
+        
+        maze_width_meters = phys_dims.get('maze_width_meters', 2.88)
+        maze_height_meters = phys_dims.get('maze_height_meters', 2.88)
+        
+        num_cols = self.maze.col
+        num_rows = self.maze.row
+        meters_per_cell_x = maze_width_meters / num_cols
+        meters_per_cell_y = maze_height_meters / num_rows
+        self.meters_per_cell = (meters_per_cell_x + meters_per_cell_y) / 2.0
+        
+        if 'pure_pursuit' in self.config:
+            pp = self.config['pure_pursuit']
+            if 'max_speed' in pp:
+                pp['max_speed'] = pp['max_speed'] / self.meters_per_cell
+            if 'min_speed' in pp:
+                pp['min_speed'] = pp['min_speed'] / self.meters_per_cell
+        
+        if 'micromouse' in self.config:
+            mm = self.config['micromouse']
+            if 'min_speed_threshold' in mm:
+                mm['min_speed_threshold'] = mm['min_speed_threshold'] / self.meters_per_cell
+    
+    def _check_collision(self, r, c):
+        """Check if position collides with walls."""
+        wheelbase_meters = self.robot.wheelbase
+        body_width_grid = wheelbase_meters / self.meters_per_cell
+        collision_radius = body_width_grid / 2.0
+        
+        # Check grid cells around robot
+        check_radius = int(math.ceil(collision_radius)) + 1
+        for dr in range(-check_radius, check_radius + 1):
+            for dc in range(-check_radius, check_radius + 1):
+                gr = int(round(r + dr))
+                gc = int(round(c + dc))
+                
+                if 0 <= gr < self.maze.row and 0 <= gc < self.maze.col:
+                    if self.maze.map[gr][gc].state == "#":
+                        # Check actual distance
+                        dist = math.hypot(r - gr, c - gc)
+                        if dist < collision_radius:
+                            return True
+        return False
+    
+    def run(self):
+        """Run simulation in tight loop without visualization."""
+        if not self.path:
+            print("❌ Cannot run: No valid path")
+            return
+        
+        print("\n🚀 Running simulation...")
+        
+        step = 0
+        while step < self.max_steps:
+            step += 1
+            
+            # ── Pure Pursuit control ──
+            spd, steer = self.pp.get_control(self.pos, self.heading)
+            
+            # ── Convert to wheel velocities ──
+            spd_meters = spd * self.meters_per_cell
+            wheelbase_grid = 1.0 * self.meters_per_cell
+            omega = self.controller.steering_to_omega(spd_meters, steer, wheelbase_equiv=wheelbase_grid)
+            v_left, v_right = self.controller.velocity_to_wheels(spd_meters, omega)
+            self.robot.set_wheel_velocities(v_left, v_right, self.dt)
+            
+            # ── Update kinematics ──
+            actual_v_meters, actual_omega = self.robot.update_kinematics(self.dt)
+            v_grid = actual_v_meters / self.meters_per_cell
+            
+            # ── Save old position for distance tracking ──
+            old_pos = list(self.pos)
+            
+            # ── Update pose ──
+            self.heading += actual_omega * self.dt
+            self.pos[0] += v_grid * math.sin(self.heading) * self.dt
+            self.pos[1] += v_grid * math.cos(self.heading) * self.dt
+            self.speed = v_grid
+            self.steering = steer
+            
+            # ── Track distance ──
+            dx = self.pos[1] - old_pos[1]
+            dy = self.pos[0] - old_pos[0]
+            self.traversed += math.hypot(dx, dy)
+            self.sim_time += self.dt
+            
+            # ── Check collision ──
+            r, c = self.pos
+            if self._check_collision(r, c):
+                self.collision = True
+                break
+            
+            # ── Check goal ──
+            gr, gc = self.path[-1]
+            goal_thr = self.config.get("micromouse", {}).get("goal_threshold", 0.5)
+            if math.hypot(r - gr, c - gc) < goal_thr:
+                self.goal_reached = True
+                break
+            
+            # ── Progress indicator (every 1000 steps) ──
+            if step % 1000 == 0:
+                print(f"  Step {step}: time={self.sim_time:.1f}s, pos=({r:.1f}, {c:.1f}), traversed={self.traversed:.1f}")
+        
+        # ── Print results ──
+        self._print_results()
+    
+    def _print_results(self):
+        """Print competition results."""
+        print("\n" + "="*60)
+        print("🏁 COMPETITION RESULTS")
+        print("="*60)
+        print(f"  Completion Time:    {self.sim_time:.3f} seconds ⭐ COMPETITION SCORE")
+        print(f"  Path Length:        {self.traversed:.3f} units (reference)")
+        print(f"  Planned Distance:   {self.planned_distance:.3f} units")
+        print(f"  Path Efficiency:    {(self.planned_distance / max(self.traversed, 0.01) * 100):.1f}%")
+        print(f"  Collisions:         {1 if self.collision else 0}")
+        
+        if self.collision:
+            print(f"  Status:             ❌ DISQUALIFIED (collision)")
+        elif self.goal_reached:
+            print(f"  Status:             ✅ QUALIFIED")
+        else:
+            print(f"  Status:             ⚠️  TIMEOUT (did not reach goal)")
+        
+        print("="*60)
+        print("⚡ Lower time is better - be the fastest!")
+        print("="*60 + "\n")
+
+
 # ── Entry point ──────────────────────────────────────────────────────────── #
 
 def main():
-    config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
-    sim = PygameSimulation(config_file)
-    sim.run()
+    # Check for benchmark mode flag
+    if len(sys.argv) > 1 and sys.argv[1] == "--benchmark":
+        config_file = sys.argv[2] if len(sys.argv) > 2 else "config.yaml"
+        print(f"\n📊 Starting benchmark mode with {config_file}")
+        sim = BenchmarkSimulation(config_file)
+        sim.run()
+    else:
+        config_file = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
+        sim = PygameSimulation(config_file)
+        sim.run()
 
 
 if __name__ == "__main__":

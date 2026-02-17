@@ -8,6 +8,13 @@
 maze_file: "mazefiles/classic/alljapan-045-2024-exp-fin.txt"
 
 # =============================================================================
+# PATH PLANNER SELECTION
+# =============================================================================
+# Choose which path planning algorithm to use
+# Options: "astar", "theta_star", "rrt"
+path_planner: "astar"
+
+# =============================================================================
 # PHYSICAL DIMENSIONS - For m/s speed conversion
 # =============================================================================
 physical_dimensions:
@@ -25,25 +32,57 @@ visualization:
   figure_size: [12, 12]
   cmap_colors: ['white', 'black', 'green', 'red', 'blue']
   title: "Micromouse Simulation - Auto-Scaled Speeds"
-  
+
+# =============================================================================
+# Wall cost parameters for A* pathfinding - always enabled, but can be tuned
+# =============================================================================
+
 wall_cost:
   enabled: true
-  weight: 4.0
-  decay: "exponential"
-  decay_rate: 0.5
-  threshold: 5.0
+  weight: 4.0   # Higher weight = stronger avoidance of walls (but may lead to longer paths)
+  decay: "exponential"  # "linear" or "exponential"
+  decay_rate: 0.5  # For exponential decay, higher = faster decay of wall cost with distance
+  threshold: 5.0  # Maximum distance (in grid units) at which wall cost is applied
+
+# =============================================================================
+# A* PATHFINDING PARAMETERS
+# =============================================================================
 
 astar:
-  debug: true            # Set true to see A* visualization
+  debug: false            # Set true to see A* visualization
   visualize_every: 50
   heuristic_weight: 1.0
 
-  # Turn cost - NEW!
-  turn_cost_enabled: true
-  turn_cost_weight: 10.0        # Weight for turn penalty
+  # Turn cost parameters for smoother paths
+  turn_cost_enabled: false     # Set true to enable turn cost penalty
+  turn_cost_weight: 2.0        # Weight for turn penalty
                                # Higher = smoother paths (but longer)
   turn_cost_threshold: 45      # Degrees - no penalty below this
                                # Lower = penalize even gentle curves
+
+# =============================================================================
+# THETA* PATH PLANNING PARAMETERS
+# =============================================================================
+# Theta* produces any-angle paths that are 5-20% shorter than A*
+# See theta_star_integration.md for details
+
+theta_star:
+  resolution: 1.0              # Grid resolution (should match maze cell size)
+  robot_radius: 0.3            # Obstacle inflation radius for safety
+  debug: true                  # Enable debug output
+  show_animation: false        # Keep false to avoid conflicts with main viz
+
+# =============================================================================
+# RRT PATH PLANNING PARAMETERS
+# =============================================================================
+# Rapidly-exploring Random Tree - sampling-based planning
+
+rrt:
+  max_iter: 1000               # Maximum iterations
+  step_size: 0.5               # Extension step size
+  goal_bias: 0.1               # Probability of sampling goal (0.0-1.0)
+  goal_tolerance: 1.0          # Distance to goal considered success
+  debug: true                  # Enable debug output
 
 # =============================================================================
 # MAZE UPSAMPLING WITH AUTO-SCALING
@@ -54,21 +93,26 @@ maze_upsampling:
   auto_scale_speeds: true       # ENABLE AUTO-SCALING!
 
 # =============================================================================
-# SPEEDS IN BASE UNITS (will be auto-scaled by upsampling factor)
-# Define all speeds as if upsampling factor = 1×
-# The system will automatically multiply by the upsampling factor
+# Pure Pursuit parameters - speeds are in m/s if use_metric_speeds is true, otherwise in grid units/sec
+# fine tune these parameters to achieve smooth and efficient path following
 # =============================================================================
 
 pure_pursuit:
   # When physical_dimensions.use_metric_speeds = true, speeds are in m/s
   # Otherwise speeds are in grid units/sec
   lookahead_distance: 3.0       # in grid units
-  max_speed: 0.1               # max allowed speed = 4 m/s (when use_metric_speeds: true)
-  min_speed: 0.001               # m/s (when use_metric_speeds: true) 
-  steering_gain: 1.0
-  slow_steering_threshold: 1.0
+  max_speed: 0.1               # max allowed speed = 4 m/s 
+  min_speed: 0.001               # m/s
+  steering_gain: 1.0     # Gain for steering control (higher = more aggressive)
+  slow_steering_threshold: 1.0     # Degrees - start slowing down steering below this angle
   debug: true                   # Enable to see path following
-  visualize_every: 5
+  visualize_every: 5        # Visualize every N steps (set to 1 for continuous visualization)
+
+
+# =============================================================================
+# Configure the micromouse orientation, timestep, and goal threshold - don't modify
+# 
+# =============================================================================
 
 micromouse:
   initial_heading: 3.14257      # π = 180 degrees (facing up)
@@ -83,15 +127,15 @@ micromouse:
 # =============================================================================
 diff_drive:
   # Physical dimensions
-  wheel_radius: 0.033 # don't modify
-  wheelbase: 0.10 # don't modify
+  wheel_radius: 0.02 # don't modify
+  wheelbase: 0.06 # don't modify
   
   # Motor constraints (base values, will be scaled)
   max_wheel_speed: 50.0         #  limit: 200 rad/s 
   max_acceleration: 20.0        # limit: 400 rad/s²
   
   # ==========================================================================
-  # SPIN-OUT PARAMETERS (percentages - not scaled) - FORGIVING SETTINGS
+  # SPIN-OUT PARAMETERS - don't modify
   # ==========================================================================
   base_slip_factor: 0.995       # Excellent base grip
   velocity_slip_factor: 0.001    # Minimal velocity-induced slip
@@ -106,7 +150,7 @@ diff_drive:
   spinout_noise: 0.001           # Minimal chaotic behavior
   
   # ==========================================================================
-  # PHYSICS MODEL
+  # PHYSICS MODEL - don't modify
   # ==========================================================================
   use_lateral_accel_model: true
   robot_mass: 0.15
@@ -114,31 +158,3 @@ diff_drive:
   gravity: 9.81
   lateral_accel_threshold: 0.95 # Very high threshold
   velocity_noise: 0.005         # Minimal noise
-
-# =============================================================================
-# HOW METRIC SPEED CONVERSION WORKS
-# =============================================================================
-#
-# When physical_dimensions.use_metric_speeds = true:
-#
-# 1. Define speeds in m/s (much more intuitive!)
-#    - max_speed: 3.0 m/s
-#    - min_speed: 0.01 m/s
-#
-# 2. System automatically converts to grid units based on maze size:
-#    - Standard AAMC maze: 2.88m × 2.88m = 129 × 129 cells
-#    - Meters per cell: 2.88 / 129 = 0.022326 m/cell
-#    - Conversion: 3.0 m/s / 0.022326 = 134.38 grid units/s
-#
-# 3. Works seamlessly with upsampling:
-#    - Upsampling changes grid size → automatically adjusts meters_per_cell
-#    - Physical speed stays constant at 3.0 m/s regardless of resolution
-#
-# BENEFITS:
-#   ✓ Enter speeds in real-world units (m/s)
-#   ✓ No manual conversion needed
-#   ✓ Works with any maze size or upsampling factor
-#   ✓ Physically accurate simulation
-#
-# To disable: Set use_metric_speeds: false (speeds become grid units/s)
-# =============================================================================

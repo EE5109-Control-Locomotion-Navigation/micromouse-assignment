@@ -4,11 +4,124 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from sys import maxsize
 
+try:
+    from theta_star import ThetaStarPlanner
+except ImportError:
+    ThetaStarPlanner = None
+    print("Warning: theta_star.py not found. ThetaStar planner will not be available.")
+
 
 class RRT:
     def __init__(self, map, max_iter=1000, step_size=0.5, goal_bias=0.1):
         # Your implementation here
         None # this is just added to avoid error, delete this
+
+class ThetaStar:
+    """
+    Adapter wrapper for ThetaStarPlanner to work with Map class.
+    
+    Theta* is an any-angle path planning algorithm that produces smoother,
+    shorter paths than A* by allowing direct line-of-sight connections between
+    non-adjacent grid cells.
+    
+    See theta_star_integration.md for implementation details.
+    """
+    
+    def __init__(self, maps, config=None):
+        if ThetaStarPlanner is None:
+            raise ImportError("ThetaStarPlanner not available. Ensure theta_star.py is present.")
+        
+        self.map = maps
+        self.config = config.get('theta_star', {}) if config else {}
+        
+        # Configuration
+        self.resolution = self.config.get('resolution', 1.0)
+        self.robot_radius = self.config.get('robot_radius', 0.3)
+        self.debug = self.config.get('debug', False)
+        
+        # Convert Map to obstacle lists
+        self.ox, self.oy = self._map_to_obstacles()
+        
+        # Create underlying Theta* planner
+        self.planner = ThetaStarPlanner(self.ox, self.oy, self.resolution, self.robot_radius)
+        
+        if self.debug:
+            print(f"Theta* initialized: {len(self.ox)} obstacle points")
+    
+    def _map_to_obstacles(self):
+        """
+        Convert Map grid to obstacle point lists.
+        
+        The theta_star.py implementation expects lists of obstacle coordinates,
+        while our Map class uses a 2D grid of State objects.
+        """
+        ox, oy = [], []
+        
+        for i in range(self.map.row):
+            for j in range(self.map.col):
+                if self.map.map[i][j].state == "#":
+                    # Note: Coordinate system conversion
+                    # Map uses (row, col) indexing where row=y, col=x
+                    # Theta* expects (x, y) coordinates
+                    ox.append(float(j))  # column -> x
+                    oy.append(float(i))  # row -> y
+        
+        return ox, oy
+    
+    def plan(self):
+        """
+        Run Theta* planning and return path.
+        
+        Returns:
+            List of (row, col) tuples representing the path from start to goal.
+            Returns empty list if no path found.
+        """
+        # Get start and goal from map (row, col format)
+        start_row, start_col = self.map.start
+        goal_row, goal_col = self.map.goal
+        
+        # Convert to (x, y) for theta_star
+        sx = float(start_col)
+        sy = float(start_row)
+        gx = float(goal_col)
+        gy = float(goal_row)
+        
+        if self.debug:
+            print(f"Theta* planning from ({sx}, {sy}) to ({gx}, {gy})")
+        
+        # Run Theta* planning
+        # Returns (rx, ry) where rx[0] is goal x, rx[-1] is start x
+        rx, ry = self.planner.planning(sx, sy, gx, gy)
+        
+        if not rx or not ry:
+            print("Theta*: No path found!")
+            return []
+        
+        # Convert back to (row, col) format and reverse order
+        # theta_star returns path from goal to start, we want start to goal
+        path = []
+        for i in range(len(rx) - 1, -1, -1):  # Reverse iteration
+            row = int(round(ry[i]))  # y -> row
+            col = int(round(rx[i]))  # x -> col
+            path.append((row, col))
+        
+        if self.debug:
+            print(f"Theta* found path with {len(path)} waypoints")
+        
+        return path
+    
+    def get_path_length(self, path):
+        """Calculate total Euclidean path length"""
+        if len(path) < 2:
+            return 0.0
+        
+        length = 0.0
+        for i in range(len(path) - 1):
+            dx = path[i+1][1] - path[i][1]  # col difference
+            dy = path[i+1][0] - path[i][0]  # row difference
+            length += math.sqrt(dx*dx + dy*dy)
+        
+        return length
 
 class AStar:
     """

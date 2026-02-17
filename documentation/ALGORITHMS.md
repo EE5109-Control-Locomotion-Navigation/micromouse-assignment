@@ -316,7 +316,7 @@ Potential improvements could include:
 1. **Path smoothing** after A* planning
 2. **Dynamic obstacle avoidance** in Pure Pursuit
 3. **Alternative planning algorithms** (RRT, D* Lite)
-4. **Alternative controllers** (LQR, MPC)
+4. **Alternative controllers** (Stanley, MPC, LQR)
 5. **Adaptive lookahead distance** based on path curvature
 
 ---

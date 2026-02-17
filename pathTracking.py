@@ -4,10 +4,12 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from sys import maxsize
 
-class LQR:
-    def __init__(self, Q=np.eye(4), R=np.eye(2)):
-        # Q: State cost matrix
-        # R: Control cost matrix
+class Stanley:
+    def __init__(self, maps, config=None):
+        # k: Cross-track error gain
+        # k_soft: Softening constant for low speeds
+        # max_steer: Maximum steering angle
+        # wheel_base: Distance between wheels for differential drive conversion
         None # this is just added to avoid error, delete this
 
 class PurePursuit:

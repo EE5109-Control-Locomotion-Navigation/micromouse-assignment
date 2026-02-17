@@ -18,12 +18,38 @@ from sys import maxsize
 import time
 import yaml
 
+# Path planning algorithms - import additional planners as you implement them
 from pathPlanning import AStar
+try:
+    from pathPlanning import ThetaStar
+except ImportError:
+    ThetaStar = None
+    print("Note: ThetaStar not available. Set path_planner to 'astar' in config.yaml")
+
+try:
+    from pathPlanning import RRT
+except ImportError:
+    RRT = None
+    print("Note: RRT not available. Implement in pathPlanning.py")
+
 from pathTracking import PurePursuit
 
 def optimize_path(path, map, min_distance=0.3):
-    # Your safety and smoothing implementation
-    None # this is just added to avoid error, delete this
+    """
+    Optimize path using clothoid curves for smooth corners.
+    
+    Args:
+        path: List of (x, y) waypoints from planner
+        map: Maze map object
+        min_distance: Minimum clearance from walls
+        
+    Returns:
+        Optimized path as list of (x, y) points
+        
+    See clothoids.md for implementation details.
+    """
+    # Your clothoid-based smoothing implementation
+    return path  # Placeholder: returns unmodified path
 
 class State:
     """
