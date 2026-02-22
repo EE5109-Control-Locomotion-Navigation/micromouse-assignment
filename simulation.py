@@ -440,16 +440,16 @@ class PygameSimulation:
             
             # Print competition metrics
             print("\n" + "="*60)
-            print("🏁 COMPETITION RESULTS")
+            print("COMPETITION RESULTS")
             print("="*60)
-            print(f"  Completion Time:    {self.sim_time:.3f} seconds ⭐ COMPETITION SCORE")
+            print(f"  Completion Time:    {self.sim_time:.3f} seconds [COMPETITION SCORE]")
             print(f"  Path Length:        {self.traversed:.3f} units (reference)")
             print(f"  Planned Distance:   {self.planned_distance:.3f} units")
             print(f"  Path Efficiency:    {(self.planned_distance / max(self.traversed, 0.01) * 100):.1f}%")
             print(f"  Collisions:         {1 if self.collision else 0}")
-            print(f"  Status:             {'✅ QUALIFIED' if not self.collision else '❌ DISQUALIFIED'}")
+            print(f"  Status:             {'[QUALIFIED]' if not self.collision else '[DISQUALIFIED]'}")
             print("="*60)
-            print("⚡ Lower time is better - be the fastest!")
+            print("Lower time is better - be the fastest!")
             print("="*60 + "\n")
             
             return
@@ -803,7 +803,7 @@ class PygameSimulation:
         metric("Grip",       f"{grip_pct:.1f}%", vc=grip_color)
         
         if diag['is_spinning_out']:
-            self.screen.blit(self.font.render("⚠ SPINOUT!", True, (255, 50, 255)), (x0 + pad, y))
+            self.screen.blit(self.font.render("[!] SPINOUT!", True, (255, 50, 255)), (x0 + pad, y))
             y += 22
         
         v_l, v_r = self.robot.get_wheel_velocities()
@@ -959,7 +959,7 @@ class BenchmarkSimulation:
         
         # ── path planning ──
         print("\n" + "="*60)
-        print("🏁 BENCHMARK MODE - Planning...")
+        print("BENCHMARK MODE - Planning...")
         print("="*60)
         
         start = self.maze.map[self.maze.start[0]][self.maze.start[1]]
@@ -970,10 +970,10 @@ class BenchmarkSimulation:
         self.path = list(zip(px, py)) if px and py else []
         
         if not self.path:
-            print("❌ ERROR: No path found!")
+            print("[ERROR] No path found!")
             return
         
-        print(f"✅ Path found: {len(self.path)} waypoints")
+        print(f"[OK] Path found: {len(self.path)} waypoints")
         
         # Calculate planned distance
         self.planned_distance = planner.calculate_path_distance(px, py)
@@ -1055,10 +1055,10 @@ class BenchmarkSimulation:
     def run(self):
         """Run simulation in tight loop without visualization."""
         if not self.path:
-            print("❌ Cannot run: No valid path")
+            print("[ERROR] Cannot run: No valid path")
             return
         
-        print("\n🚀 Running simulation...")
+        print("\nRunning simulation...")
         
         step = 0
         while step < self.max_steps:
@@ -1117,23 +1117,23 @@ class BenchmarkSimulation:
     def _print_results(self):
         """Print competition results."""
         print("\n" + "="*60)
-        print("🏁 COMPETITION RESULTS")
+        print("COMPETITION RESULTS")
         print("="*60)
-        print(f"  Completion Time:    {self.sim_time:.3f} seconds ⭐ COMPETITION SCORE")
+        print(f"  Completion Time:    {self.sim_time:.3f} seconds [COMPETITION SCORE]")
         print(f"  Path Length:        {self.traversed:.3f} units (reference)")
         print(f"  Planned Distance:   {self.planned_distance:.3f} units")
         print(f"  Path Efficiency:    {(self.planned_distance / max(self.traversed, 0.01) * 100):.1f}%")
         print(f"  Collisions:         {1 if self.collision else 0}")
         
         if self.collision:
-            print(f"  Status:             ❌ DISQUALIFIED (collision)")
+            print(f"  Status:             [DISQUALIFIED] (collision)")
         elif self.goal_reached:
-            print(f"  Status:             ✅ QUALIFIED")
+            print(f"  Status:             [QUALIFIED]")
         else:
-            print(f"  Status:             ⚠️  TIMEOUT (did not reach goal)")
+            print(f"  Status:             [TIMEOUT] (did not reach goal)")
         
         print("="*60)
-        print("⚡ Lower time is better - be the fastest!")
+        print("Lower time is better - be the fastest!")
         print("="*60 + "\n")
 
 
@@ -1143,7 +1143,7 @@ def main():
     # Check for benchmark mode flag
     if len(sys.argv) > 1 and sys.argv[1] == "--benchmark":
         config_file = sys.argv[2] if len(sys.argv) > 2 else "config.yaml"
-        print(f"\n📊 Starting benchmark mode with {config_file}")
+        print(f"\nStarting benchmark mode with {config_file}")
         sim = BenchmarkSimulation(config_file)
         sim.run()
     else:

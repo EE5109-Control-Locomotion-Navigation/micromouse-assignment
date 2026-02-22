@@ -284,10 +284,10 @@ if __name__ == "__main__":
     controller = DiffDriveController(robot.wheel_radius, robot.wheelbase)
     
     # Test methods exist
-    print("✓ calculate_dynamic_slip exists:", hasattr(robot, 'calculate_dynamic_slip'))
-    print("✓ check_spinout exists:", hasattr(robot, 'check_spinout'))
-    print("✓ get_diagnostics exists:", hasattr(robot, 'get_diagnostics'))
-    print("✓ is_spinning_out initialized:", hasattr(robot, 'is_spinning_out'))
+    print("[OK] calculate_dynamic_slip exists:", hasattr(robot, 'calculate_dynamic_slip'))
+    print("[OK] check_spinout exists:", hasattr(robot, 'check_spinout'))
+    print("[OK] get_diagnostics exists:", hasattr(robot, 'get_diagnostics'))
+    print("[OK] is_spinning_out initialized:", hasattr(robot, 'is_spinning_out'))
     
     # Quick test
     robot.set_state(0, 0, 0)
@@ -298,4 +298,4 @@ if __name__ == "__main__":
     
     print(f"\nQuick test: v={v:.3f}, omega={omega:.3f}")
     print(f"Diagnostics: {diag}")
-    print("\n✅ All tests passed! Ready to use.")
+    print("\n[PASS] All tests passed! Ready to use.")

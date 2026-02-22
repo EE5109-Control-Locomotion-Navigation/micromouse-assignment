@@ -252,25 +252,25 @@ This headless mode will:
 Output example:
 ```
 ============================================================
-🏁 BENCHMARK MODE - Planning...
+BENCHMARK MODE - Planning...
 ============================================================
-✅ Path found: 234 waypoints
+[OK] Path found: 234 waypoints
 
- Running simulation...
+Running simulation...
   Step 1000: time=2.5s, pos=(8.3, 12.1), traversed=15.2
   Step 2000: time=5.0s, pos=(14.7, 9.8), traversed=28.9
 
 ============================================================
-🏁 COMPETITION RESULTS
+COMPETITION RESULTS
 ============================================================
-  Completion Time:    12.345 seconds ⭐ COMPETITION SCORE
+  Completion Time:    12.345 seconds [COMPETITION SCORE]
   Path Length:        89.234 units (reference)
   Planned Distance:   87.123 units
   Path Efficiency:    97.6%
   Collisions:         0
-  Status:             ✅ QUALIFIED
+  Status:             [QUALIFIED]
 ============================================================
-⚡ Lower time is better - be the fastest!
+Lower time is better - be the fastest!
 ============================================================
 ```
 

@@ -50,6 +50,6 @@ if use_metric:
     min_threshold_grid = min_threshold_ms / meters_per_cell
     print(f'  min_speed_threshold: {min_threshold_ms} m/s → {min_threshold_grid:.3f} grid units/s')
     
-    print(f'\n✓ Metric speed conversion is working correctly!')
+    print(f'\n[OK] Metric speed conversion is working correctly!')
 else:
-    print('\n⚠ Metric speeds disabled - speeds are in grid units')
+    print('\n[WARNING] Metric speeds disabled - speeds are in grid units')

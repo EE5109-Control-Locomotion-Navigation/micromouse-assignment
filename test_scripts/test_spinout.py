@@ -38,7 +38,7 @@ def test_spinout():
     print("=" * 70)
     
     # Test 1: Safe low-speed turn
-    print("\n📗 Test 1: Low speed, moderate turn (SAFE)")
+    print("\nTest 1: Low speed, moderate turn (SAFE)")
     print("-" * 70)
     robot.set_state(0, 0, 0)
     robot.is_spinning_out = False
@@ -49,12 +49,12 @@ def test_spinout():
         v, omega = robot.update_kinematics(0.1)
         x, y, theta = robot.get_state()
         diag = robot.get_diagnostics()
-        status = "🔥 SPINOUT!" if diag['is_spinning_out'] else "✓ Stable"
+        status = "[SPINOUT!]" if diag['is_spinning_out'] else "[Stable]"
         print(f"  t={i*0.1:.1f}s: v={v:.3f} m/s, ω={omega:.2f} rad/s, "
               f"grip={diag['slip_factor']*100:.1f}% - {status}")
     
     # Test 2: Moderate speed, sharp turn
-    print("\n📙 Test 2: Medium speed, sharp turn (RISKY)")
+    print("\nTest 2: Medium speed, sharp turn (RISKY)")
     print("-" * 70)
     robot.set_state(0, 0, 0)
     robot.is_spinning_out = False
@@ -65,12 +65,12 @@ def test_spinout():
         v, omega = robot.update_kinematics(0.1)
         x, y, theta = robot.get_state()
         diag = robot.get_diagnostics()
-        status = "🔥 SPINOUT!" if diag['is_spinning_out'] else "✓ Stable"
+        status = "[SPINOUT!]" if diag['is_spinning_out'] else "[Stable]"
         print(f"  t={i*0.1:.1f}s: v={v:.3f} m/s, ω={omega:.2f} rad/s, "
               f"grip={diag['slip_factor']*100:.1f}% - {status}")
     
     # Test 3: High-speed sharp turn (DANGER)
-    print("\n📕 Test 3: HIGH SPEED + SHARP TURN (DANGER!)")
+    print("\nTest 3: HIGH SPEED + SHARP TURN (DANGER!)")
     print("-" * 70)
     robot.set_state(0, 0, 0)
     robot.is_spinning_out = False
@@ -81,7 +81,7 @@ def test_spinout():
         v, omega = robot.update_kinematics(0.1)
         x, y, theta = robot.get_state()
         diag = robot.get_diagnostics()
-        status = "🔥 SPINOUT!" if diag['is_spinning_out'] else "✓ Stable"
+        status = "[SPINOUT!]" if diag['is_spinning_out'] else "[Stable]"
         print(f"  t={i*0.1:.1f}s: v={v:.3f} m/s, ω={omega:.2f} rad/s, "
               f"grip={diag['slip_factor']*100:.1f}% - {status}")
     
