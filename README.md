@@ -419,24 +419,24 @@ python simulation.py --benchmark my_config.yaml
 ```
 
 **Benchmark mode features:**
-- ⚡ Runs at maximum speed (no frame rate limiting)
-- 📊 Prints competition metrics to console
-- 🚫 No pygame window (headless)
-- ⏱️ Perfect for rapid iteration and parameter tuning
+- Use this for rapid prototyping and parameter tuning
+- Runs at maximum speed (no frame rate limiting)
+- Prints competition metrics to console
+- No pygame window (headless)
 
 **Example output:**
 ```
 ============================================================
-🏁 COMPETITION RESULTS
+COMPETITION RESULTS
 ============================================================
-  Completion Time:    12.345 seconds ⭐ COMPETITION SCORE
+  Completion Time:    12.345 seconds - COMPETITION SCORE
   Path Length:        89.234 units (reference)
   Planned Distance:   87.123 units
   Path Efficiency:    97.6%
   Collisions:         0
-  Status:             ✅ QUALIFIED
+  Status:             QUALIFIED
 ============================================================
-⚡ Lower time is better - be the fastest!
+
 ============================================================
 ```
 
@@ -473,88 +473,8 @@ Or many mazes are provided:
 - `mazefiles/halfsize/` - Half-size competition mazes  
 - `mazefiles/training/` - Training mazes
 
-### Testing Your Implementations
 
-See [Testing Your Implementation](#testing-your-implementation) section below.
-
-## 📁 File Structure
-
-```
-micromouse-assignment/
-├── 📄 Core Simulation Files
-│   ├── simulation.py              # Main simulation loop
-│   ├── micromouse.py              # Map class, State, optimize_path
-│   ├── diff_drive_robot.py        # Robot kinematics and collision
-│   ├── pathPlanning.py            # AStar, ThetaStar, RRT (stub)
-│   ├── pathTracking.py            # PurePursuit, Stanley (stub)
-│   ├── theta_star.py              # Theta* core algorithm (provided)
-│   ├── rrt.py                     # Basic RRT implementation (sample)
-│   ├── rrt_with_sobol_sampler.py  # RRT with Sobol sampling (sample)
-│   └── rrt_with_pathsmoothing.py  # RRT with smoothing (sample)
-│
-├── ⚙️ Configuration
-│   ├── config.yaml                # Main configuration file
-│   └── requirements.txt           # Python dependencies
-│
-├── 📖 Documentation & Guides
-│   ├── README.md                  # This file
-│   ├── assignment.md              # Assignment requirements
-│   ├── ALGORITHMS.md              # A* and Pure Pursuit details
-│   ├── stanley.md                 # Stanley controller guide
-│   ├── clothoids.md               # Clothoid optimization guide
-│   ├── theta_star_integration.md  # Theta* integration guide
-│   ├── rrt_integration.md         # RRT integration guide (3 variants)
-│   ├── INTEGRATION_GUIDE.md       # Quick reference
-│   ├── bezier.md                  # Bézier curves (reference)
-│   └── LICENSE                    # MIT License
-│
-├── 🗂️ Maze Files (100+ included)
-│   ├── mazefiles/classic/         # Full-size competition mazes
-│   │   ├── AAMC15Maze.txt
-│   │   ├── alljapan-045-2024-exp-fin.txt
-│   │   └── ... (80+ more)
-│   ├── mazefiles/halfsize/        # Half-size mazes
-│   └── mazefiles/training/        # Training mazes
-│
-├── 🖼️ Images & Resources
-│   └── images/
-│       ├── Micromouse_maze.jpg
-│       └── Micromouse_Green_Giant_V1.3.jpg
-│
-└── 🧪 Test Scripts (optional)
-    └── test_scripts/
-        ├── test_mazes.py
-        ├── test_metric_conversion.py
-        └── test_spinout.py
-```
-
-### Key Files Explained
-
-| File | Purpose | Status |
-|------|---------|--------|
-| `simulation.py` | Main execution loop | ✅ Complete |
-| `micromouse.py` | Map, State, optimize_path | 🎯 optimize_path to implement |
-| `pathPlanning.py` | AStar (✅), ThetaStar (✅), RRT (🎯) | Mixed |
-| `pathTracking.py` | PurePursuit (✅), Stanley (🎯) | Mixed |
-| `theta_star.py` | Theta* algorithm core | ✅ Complete (provided) |
-| `rrt.py` | Basic RRT implementation | ✅ Complete (sample) |
-| `rrt_with_sobol_sampler.py` | RRT with Sobol sampling | ✅ Complete (sample) |
-| `rrt_with_pathsmoothing.py` | RRT with smoothing | ✅ Complete (sample) |
-| `config.yaml` | All parameters | ✅ Complete |
-
-### Documentation Files
-
-| Guide | Description | When to Read |
-|-------|-------------|-------------|
-| `assignment.md` | Full requirements | **Start here** |
-| `INTEGRATION_GUIDE.md` | Quick reference | When coding |
-| `theta_star_integration.md` | Theta* setup | If using Theta* |
-| `rrt_integration.md` | RRT integration (3 variants) | If using RRT |
-| `stanley.md` | Stanley controller | Implementing Stanley |
-| `clothoids.md` | Path optimization | Implementing smoothing |
-| `ALGORITHMS.md` | Baseline explanation | Understanding A*/PP |
-
-## 🧪 Testing Your Implementation
+## Testing Your Implementation
 
 ### 1. Test Path Planners
 
@@ -623,109 +543,18 @@ done
 
 ### Success Criteria
 
-✅ **Path Planning**:
+**Path Planning**:
 - Finds valid path from start to goal
 - No paths through walls
 - Theta* produces shorter paths than A* (5-20%)
 - RRT finds paths within max_iter iterations
 
-✅ **Path Tracking**:
-- Robot follows path without collisions
-- Average cross-track error < 0.5 grid units
-- Stanley outperforms Pure Pursuit on smooth paths
 
-✅ **Path Optimization**:
-- Smoothed paths have fewer waypoints
-- Curvature is continuous (no jumps)
-- Total path length increases < 10%
-- Maintains min_clearance from walls
-
-## 📊 Example Output
-
-The simulation produces:
-
-### Console Output
-```bash
-=== Micromouse Simulation ===
-Maze: alljapan-045-2024-exp-fin.txt (32x32)
-Planner: theta_star
-Controller: pure_pursuit
-
-[Theta*] Planning from (1.0, 1.0) to (15.0, 15.0)
-[Theta*] Found path with 28 waypoints
-[Optimization] Applied clothoid smoothing
-[Optimization] Reduced waypoints to 23
-[Optimization] Max curvature reduced by 68%
-
-[Simulation] Starting navigation...
-Progress: [=================] 100%
-
-=== Results ===
-Planned path length: 24.3 units
-Actual distance: 24.8 units (2.1% tracking error)
-Time: 16.5 seconds
-Status: SUCCESS - Goal reached!
-```
-
-### Visualizations
-
-**Planning Visualization** (if `debug: true`):
-- Shows A* search progress or Theta* line-of-sight connections
-- Real-time updates during planning
-
-**Tracking Visualization** (if `debug: true`):
-- Robot position (red dot)
-- Current heading (green arrow)
-- Lookahead/nearest point (magenta)
-- Path (yellow line)
-- Actual trajectory (blue line)
-
-**Final Comparison Plot**:
-- Maze with walls (black)
-- Start (green marker)
-- Goal (red marker)
-- Planned path (yellow)
-- Actual trajectory (blue line)
-- Any collisions (red X)
 
 ![Micromouse Maze Visualization](images//Micromouse_maze.jpg)
 
-## ❓ Common Issues
 
-### Issue: "ThetaStar not available"
-**Solution**: Ensure `theta_star.py` is in project root, check imports in `pathPlanning.py`
-
-### Issue: "No path found"
-**Causes**:
-- Start or goal in wall
-- No valid path exists
-- RRT max_iter too low
-
-**Solution**: Check maze file, verify start/goal positions, increase max_iter
-
-### Issue: Controller oscillations
-**Pure Pursuit**: Increase `lookahead_distance`  
-**Stanley**: Decrease `k` gain, increase `k_soft`
-
-### Issue: Robot cuts corners / hits walls
-**Solution**: 
-- Increase `robot_radius` in planner
-- Increase `min_wall_clearance` in optimization
-- Reduce `max_speed` in controller
-
-### Issue: Coordinate mismatch errors
-**Remember**:
-- Map uses `(row, col)`: `map[row][col]`
-- Plotting uses `(x, y)`: `plot(col, row)`
-- Theta* uses `(x, y)`: convert at boundaries
-
-### Issue: Path goes through wall after optimization
-**Solution**: 
-- Increase `min_wall_clearance`
-- Reduce `approach_distance_factor` for clothoids
-- Enable safety checking in `optimize_path()`
-
-## 📝 For Your Report
+##  Report Guidelines
 
 ### Suggested Analysis Structure
 
@@ -766,7 +595,7 @@ Status: SUCCESS - Goal reached!
 - Total navigation time
 - Success rate across mazes
 
-## 📚 Additional Resources
+## Additional Resources
 
 - **PythonRobotics**: https://github.com/AtsushiSakai/PythonRobotics
 - **Theta* Paper**: Nash et al., "Theta*: Any-Angle Path Planning on Grids", AAAI 2007
@@ -774,21 +603,9 @@ Status: SUCCESS - Goal reached!
 - **RRT Paper**: LaValle, "Rapidly-Exploring Random Trees", 1998
 - **Clothoids**: Bertolazzi & Frego, "G¹ fitting with clothoids", 2015
 
-## 📧 Support
 
-For questions about the assignment:
-- Review the implementation guides in `docs/`
-- Check `INTEGRATION_GUIDE.md` for quick answers
-- Refer to provided baseline code as examples
-- Test on simple mazes first before complex ones
-
-## 📄 License
+## License
 
 MIT License - Free for academic and personal use.
 
 See [LICENSE](LICENSE) for details.
-
----
-
-**Good luck with your implementation! 🚀🤖**
-
