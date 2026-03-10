@@ -145,11 +145,9 @@ All dependencies are listed in `requirements.txt`.
 | Component | File | Implementation Guide | Points |
 |-----------|------|---------------------|--------|
 | **2 Path Planners** | `pathPlanning.py` | Choose 2: Theta*(provided)/RRT(samples)/Enhanced A* | 25 |
-| **Stanley Controller** | `pathTracking.py` |  | 25 |
-| **Clothoid Optimization** | `micromouse.py` | | 25 |
+| **Stanley Controller** | `pathTracking.py` | https://github.com/AtsushiSakai/PythonRobotics/tree/master/PathTracking/stanley_control | 25 |
+| **Clothoid Optimization** | `micromouse.py` | https://github.com/AtsushiSakai/PythonRobotics/tree/master/PathPlanning/ClothoidPath | 25 |
 | **Analysis Report** | PDF (5-10 pages) | Comparison and insights | 25 |
-
-**Note**: Both Theta* and RRT have reference implementations provided. Theta* is fully integrated with an adapter, while RRT has 3 sample variants that you'll need to integrate (see [rrt_integration.md](./rrt_integration.md)). You can use either as one of your two planners.
 
 ## How It Works
 
