@@ -6,7 +6,7 @@
 A Python simulation of a micromouse robot navigating through a maze using:
 - **Multiple path planning algorithms**: A* (baseline), Theta* (any-angle), or RRT (sampling-based)
 - **Advanced path tracking controllers**: Pure Pursuit and Stanley Controller
-- **Path optimization**: Clothoid curve smoothing for minimum curvature
+- **Path optimisation**: Clothoid curve smoothing for minimum curvature
 - **Collision detection** with wall avoidance
 
 ## Assignment Context
@@ -17,15 +17,6 @@ This is an educational project for **EE5109 - Advanced Robotics**. Students enha
 3. **Implementing clothoid-based path optimization** for smooth, minimum-curvature paths
 4. **Analyzing and comparing** performance across different algorithms and configurations
 
-### Implementation Guides
-
-- **[Assignment Instructions](./assignment.md)** - Complete assignment requirements and rubric
-- **[Theta* Integration](./theta_star_integration.md)** - Any-angle path planning (5-20% shorter paths)
-- **[RRT Integration](./rrt_integration.md)** - Sampling-based path planning with 3 variants (basic, Sobol, smoothed)
-- **[Stanley Controller](./stanley.md)** - Advanced path tracking with differential drive adaptation
-- **[Clothoid Optimization](./clothoids.md)** - Euler spiral smoothing for optimal curvature
-- **[Integration Guide](./INTEGRATION_GUIDE.md)** - Quick reference for connecting all components
-- **[Algorithms Overview](./ALGORITHMS.md)** - Baseline A* and Pure Pursuit explanations
 
 ## Table of Contents
 - [Features](#features)
@@ -54,7 +45,7 @@ This is an educational project for **EE5109 - Advanced Robotics**. Students enha
   - Grid-based optimal planning with configurable heuristics
   - Wall proximity cost for safer paths
   - Turn cost penalty for smoother paths
-- **Theta* (Provided with adapter)**: 
+- **Theta* **: 
   - Any-angle planning for 5-20% shorter paths
   - Line-of-sight path compression
   - Full integration with Map class
@@ -62,7 +53,6 @@ This is an educational project for **EE5109 - Advanced Robotics**. Students enha
   - Basic RRT with uniform random sampling
   - RRT with Sobol quasi-random sampling (faster convergence)
   - RRT with path smoothing post-processing
-  - Integration guide provided, needs adapter like Theta*
 
 ![Map Exploration](images//debug_explore.png)
 
@@ -76,7 +66,7 @@ This is an educational project for **EE5109 - Advanced Robotics**. Students enha
   - Velocity-adaptive gains
   - Differential drive conversion included
 
-### Path Optimization
+### Path Optimisation
 - **Clothoid Smoothing (To Implement)**:
   - Euler spiral curves for constant curvature rate
   - Kinematically optimal for differential drive
@@ -85,15 +75,15 @@ This is an educational project for **EE5109 - Advanced Robotics**. Students enha
 
 ### Visualization & Analysis
 - **Real-time planning visualization**: See A* search progress or RRT tree growth
-- **Path tracking visualization**: Robot position, heading, lookahead/nearest point
+- **Path tracking visualisation**: Robot position, heading, lookahead/nearest point
 - **Comparative plots**: Side-by-side algorithm comparisons
-- **Curvature profiles**: Analyze path smoothness before/after optimization
+- **Curvature profiles**: Analyse path smoothness before/after optimisation
 - **Performance metrics**: Path length, computation time, tracking error
 
 ### Configuration System
 - **YAML-based**: Easy parameter tuning without code changes
 - **Algorithm selection**: Switch planners and controllers via config
-- **Debug modes**: Enable/disable visualization for each component
+- **Debug modes**: Enable/disable visualisation for each component
 - **Physical units**: Optional metric speed conversion (m/s)
 
 ## Installation
@@ -130,7 +120,7 @@ This is an educational project for **EE5109 - Advanced Robotics**. Students enha
   matplotlib     # Visualization
   pyyaml         # Configuration files
   pygame         # Real-time simulation
-  pyclothoids    # Clothoid curve generation (for path optimization)
+  pyclothoids    # Clothoid curve generation (for path optimisation)
   ```
 
 All dependencies are listed in `requirements.txt`.
@@ -155,8 +145,8 @@ All dependencies are listed in `requirements.txt`.
 | Component | File | Implementation Guide | Points |
 |-----------|------|---------------------|--------|
 | **2 Path Planners** | `pathPlanning.py` | Choose 2: Theta*(provided)/RRT(samples)/Enhanced A* | 25 |
-| **Stanley Controller** | `pathTracking.py` | See [stanley.md](./stanley.md) | 25 |
-| **Clothoid Optimization** | `micromouse.py` | See [clothoids.md](./clothoids.md) | 25 |
+| **Stanley Controller** | `pathTracking.py` |  | 25 |
+| **Clothoid Optimization** | `micromouse.py` | | 25 |
 | **Analysis Report** | PDF (5-10 pages) | Comparison and insights | 25 |
 
 **Note**: Both Theta* and RRT have reference implementations provided. Theta* is fully integrated with an adapter, while RRT has 3 sample variants that you'll need to integrate (see [rrt_integration.md](./rrt_integration.md)). You can use either as one of your two planners.
@@ -179,7 +169,7 @@ All dependencies are listed in `requirements.txt`.
          │
          ▼
 ┌─────────────────┐
-│ 3. Optimization │ ← Optional: clothoid smoothing
+│ 3. Optimisation │ ← Optional: clothoid smoothing
 │ (optimize_path) │   Replaces sharp corners with Euler spirals
 └────────┬────────┘
          │
@@ -197,8 +187,8 @@ All dependencies are listed in `requirements.txt`.
          │
          ▼
 ┌─────────────────┐
-│  6. Results &   │ ← Performance metrics and visualization
-│  Visualization  │   Path comparison, tracking error plots
+│  6. Results &   │ ← Performance metrics and visualisation
+│  Visualisation  │   Path comparison, tracking error plots
 └─────────────────┘
 ```
 
@@ -225,7 +215,7 @@ All dependencies are listed in `requirements.txt`.
 - 3 variants: basic, Sobol sampling, with path smoothing
 - Randomly samples free space to build exploration tree
 - Finds path by backtracking through tree
-- Requires adapter similar to Theta* (see [rrt_integration.md](./rrt_integration.md))
+- Requires adapter similar to Theta*
 
 #### 3️ **Path Optimization** (`micromouse.py: optimize_path`)
 - **Input**: Waypoint list from planner
@@ -286,7 +276,7 @@ physical_dimensions:
 # A* PARAMETERS
 # ============================================
 astar:
-  debug: false                # Enable search visualization
+  debug: false                # Enable search visualisation
   heuristic_weight: 1.0       # h(n) multiplier (1.0 = admissible)
   turn_cost_enabled: true     # Penalize direction changes
   turn_cost_weight: 2.0       # Higher = smoother paths
@@ -329,7 +319,7 @@ pure_pursuit:
   lookahead_distance: 3.0     # Grid units ahead
   max_speed: 0.5              # m/s or grid units/s
   min_speed: 0.2
-  debug: true                 # Show tracking visualization
+  debug: true                 # Show tracking visualisation
 
 # ============================================
 # STANLEY CONTROLLER (when implemented)
@@ -371,7 +361,7 @@ tracking_controller: "pure_pursuit"  # Simple, lookahead-based
 tracking_controller: "stanley"       # Advanced, error-based
 ```
 
-**Enable/disable debug visualization**:
+**Enable/disable debug visualisation**:
 ```yaml
 astar:
   debug: true          # See A* search progress
@@ -408,7 +398,7 @@ python simulation.py my_config.yaml
 
 ### Benchmark Mode (Fast Testing)
 
-For rapid parameter tuning without visualization:
+For rapid parameter tuning without visualisation:
 
 ```bash
 # Run headless benchmark (much faster!)
@@ -450,7 +440,7 @@ tracking_controller: "pure_pursuit"
 # 2. Run benchmark for quick test
 python simulation.py --benchmark
 
-# 3. If satisfied, run interactive mode to visualize
+# 3. If satisfied, run interactive mode to visualise
 python simulation.py
 ```
 
@@ -508,7 +498,7 @@ def compare_planners(maze_map, config):
 # Test Pure Pursuit
 tracking_controller: "pure_pursuit"
 pure_pursuit:
-  debug: true          # Enable visualization
+  debug: true          # Enable visualisation
   lookahead_distance: 3.0
 
 # Then test Stanley
@@ -518,10 +508,10 @@ stanley:
   k: 1.0
 ```
 
-### 3. Test Path Optimization
+### 3. Test Path Optimisation
 
 ```python
-# Compare before/after optimization
+# Compare before/after optimisation
 raw_path = planner.plan()
 optimized_path = optimize_path(raw_path, maze_map)
 
@@ -568,11 +558,11 @@ done
 3. **Results**:
    - **Planner comparison table**: waypoints, length, time, success rate
    - **Controller comparison table**: tracking error, speed, completion time
-   - **Optimization impact**: curvature reduction, path quality metrics
+   - **Optimisation impact**: curvature reduction, path quality metrics
 
 4. **Visualizations**:
    - Side-by-side path comparisons
-   - Curvature profiles (before/after optimization)
+   - Curvature profiles (before/after optimisation)
    - Tracking error plots
    - Algorithm-specific (RRT tree, Theta* shortcuts)
 
